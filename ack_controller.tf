@@ -14,7 +14,7 @@
 
 module "ack_controller_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "4.8.0"
+  version = "4.10.1"
 
   for_each = var.ack_services
 
@@ -38,7 +38,7 @@ resource "aws_iam_policy" "ack_eks" {
 
 module "alb_controller_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "4.8.0"
+  version = "4.10.1"
 
   create_role                   = true
   role_description              = format("ACK %s controller role", upper(var.ack_eks_name))
