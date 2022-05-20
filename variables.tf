@@ -38,78 +38,79 @@ variable "ack_controller_namespace" {
 }
 
 variable "ack_services" {
+  description = "List of AWS services"
   type = list(object({
     name       = string
     policy_arn = string
   }))
   default = [
-  {
-    name       = "apigatewayv2"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
-  },
-  {
-    name       = "applicationautoscaling"
-    policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
-  },
-  {
-    name       = "dynamodb"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
-  },
-  {
-    name       = "ec2"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-  },
-  {
-    name       = "ecr"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
-  },
-  # {
-  #   name       = "eks"
-  #   policy_arn = "arn:aws:iam::aws:policy/" # TODO:
-  # },
-  {
-    name       = "apigatewayv2"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
-  },
-  {
-    name       = "elasticache"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
-  },
-  {
-    name       = "kms"
-    policy_arn = "arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser"
-  },
-  {
-    name       = "lambda"
-    policy_arn = "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
-  },
-  {
-    name       = "mq"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonMQApiFullAccess"
-  },
-  {
-    name       = "opensearchservice"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
-  },
-  {
-    name       = "rds"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
-  },
-  {
-    name       = "s3"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-  },
-  {
-    name       = "sagemaker"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
-  },
-  {
-    name       = "sfn"
-    policy_arn = "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
-  },
-  {
-    name       = "sns"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
-  }, 
-]
+    {
+      name       = "apigatewayv2"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
+    },
+    {
+      name       = "applicationautoscaling"
+      policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+    },
+    {
+      name       = "dynamodb"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+    },
+    {
+      name       = "ec2"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+    },
+    {
+      name       = "ecr"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+    },
+    # {
+    #   name       = "eks"
+    #   policy_arn = "arn:aws:iam::aws:policy/" # TODO:
+    # },
+    {
+      name       = "apigatewayv2"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
+    },
+    {
+      name       = "elasticache"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
+    },
+    {
+      name       = "kms"
+      policy_arn = "arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser"
+    },
+    {
+      name       = "lambda"
+      policy_arn = "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+    },
+    {
+      name       = "mq"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonMQApiFullAccess"
+    },
+    {
+      name       = "opensearchservice"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
+    },
+    {
+      name       = "rds"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
+    },
+    {
+      name       = "s3"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+    },
+    {
+      name       = "sagemaker"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+    },
+    {
+      name       = "sfn"
+      policy_arn = "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
+    },
+    {
+      name       = "sns"
+      policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+    },
+  ]
 }
