@@ -32,7 +32,7 @@ variable "tags" {
 }
 
 variable "ack_controller_namespace" {
-  description = "The K8s namespace for ALB Controller resources"
+  description = "The K8s namespace for ACK Controller resources"
   type        = string
   default     = "ack-system"
 }
