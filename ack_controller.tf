@@ -15,7 +15,7 @@
 #tfsec:ignore:aws-iam-no-policy-wildcards
 module "ack_controller_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "5.29.0"
+  version = "5.30.0"
 
   for_each = var.ack_services
 
@@ -39,7 +39,7 @@ resource "aws_iam_policy" "ack_eks" {
 #tfsec:ignore:aws-iam-no-policy-wildcards
 module "alb_controller_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "5.29.0"
+  version = "5.30.0"
 
   create_role                   = true
   role_description              = format("ACK %s controller role", upper(var.ack_controller_role_name))
