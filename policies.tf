@@ -14,6 +14,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-data "aws_eks_cluster" "this" {
-  name = var.cluster_name
+resource "aws_iam_policy" "ack" {
+  for_each = toset(local.custom_policies)
+
+  name   = format("Ack%sController", title(each.value))
+  policy = file(format("${path.module}/policies/%s.json", each.value))
 }
