@@ -16,7 +16,7 @@
 
 module "irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "5.42.0"
+  version = "5.48.0"
 
   for_each = var.enable_irsa ? toset(var.ack_services) : toset([])
 
@@ -57,4 +57,18 @@ module "pod_identity" {
   }
 
   tags = var.tags
+}
+ 
+#tfsec:ignore:aws-iam-no-policy-wildcards
+module "alb_controller_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version = "5.48.0"
+
+  create_role                   = true
+  role_description              = format("ACK %s controller role", upper(var.ack_controller_role_name))
+  role_name                     = format("ack-%s-controller", var.ack_controller_role_name)
+  provider_url                  = data.aws_eks_cluster.this.cluster_oidc_issuer_url
+  role_policy_arns              = [aws_iam_policy.ack_eks.arn]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:%s:ack-%s-controller", var.ack_controller_namespace, var.ack_controller_role_name]
+  tags                          = var.tags
 }
