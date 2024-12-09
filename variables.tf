@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
 
 #############################################################################
 # ACK Controller
@@ -20,18 +22,7 @@ variable "cluster_name" {
   description = "Name of the EKS cluster"
 }
 
-variable "ack_controller_role_name" {
-  description = "The name of the ACK Controller IAM role"
-  type        = string
-  default     = "ack-controller"
-}
-
-variable "tags" {
-  description = "A map of tags to add to all resources"
-  type        = map(string)
-}
-
-variable "ack_controller_namespace" {
+variable "namespace" {
   description = "The K8s namespace for ACK Controller resources"
   type        = string
   default     = "ack-system"
@@ -39,78 +30,21 @@ variable "ack_controller_namespace" {
 
 variable "ack_services" {
   description = "List of AWS services"
-  type = list(object({
-    name       = string
-    policy_arn = string
-  }))
-  default = [
-    {
-      name       = "apigatewayv2"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
-    },
-    {
-      name       = "applicationautoscaling"
-      policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
-    },
-    {
-      name       = "dynamodb"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
-    },
-    {
-      name       = "ec2"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-    },
-    {
-      name       = "ecr"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
-    },
-    # {
-    #   name       = "eks"
-    #   policy_arn = "arn:aws:iam::aws:policy/" # TODO:
-    # },
-    {
-      name       = "apigatewayv2"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
-    },
-    {
-      name       = "elasticache"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
-    },
-    {
-      name       = "kms"
-      policy_arn = "arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser"
-    },
-    {
-      name       = "lambda"
-      policy_arn = "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
-    },
-    {
-      name       = "mq"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonMQApiFullAccess"
-    },
-    {
-      name       = "opensearchservice"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
-    },
-    {
-      name       = "rds"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
-    },
-    {
-      name       = "s3"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-    },
-    {
-      name       = "sagemaker"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
-    },
-    {
-      name       = "sfn"
-      policy_arn = "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
-    },
-    {
-      name       = "sns"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
-    },
-  ]
+  type        = list(string)
+  default     = []
+}
+
+variable "enable_irsa" {
+  type        = bool
+  description = "Enable IRSA resources"
+}
+
+variable "enable_pod_identity" {
+  type        = bool
+  description = "Enable EKS Pod Identity resources"
+}
+
+variable "tags" {
+  description = "A map of tags to add to all resources"
+  type        = map(string)
 }
