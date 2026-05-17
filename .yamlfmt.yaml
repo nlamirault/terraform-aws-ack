@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright (C) Nicolas Lamirault <nicolas.lamirault@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+formatter:
+  type: basic
+  indent: 2
+  include_document_start: false
+  line_ending: lf
+  trim_trailing_whitespace: true
+  pad_line_comments: 1
