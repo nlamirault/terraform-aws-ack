@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright (C) Nicolas Lamirault <nicolas.lamirault@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+[default]
+enabled = true
+
+[rules]
+MD013 = false  # line length
+MD033 = false  # inline HTML (needed for Terraform docs tables)
+MD041 = false  # first line heading (pre-commit terraform docs inserts before heading)

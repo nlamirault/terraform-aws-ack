@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: terraform-aws-ack
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Nicolas
+    family-names: Lamirault
+    email: nicolas.lamirault@gmail.com
+abstract: >-
+  Terraform module for AWS ACK (AWS Controllers for Kubernetes)
+keywords:
+  - terraform
+  - aws
+  - ack
+  - kubernetes
+license: Apache-2.0
+repository-code: https://github.com/nlamirault/terraform-aws-ack
+url: https://github.com/nlamirault/terraform-aws-ack
