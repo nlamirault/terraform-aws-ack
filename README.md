@@ -1,6 +1,44 @@
 # Terraform module for AWS ACK
 
-![Tfsec](https://github.com/nlamirault/terraform-aws-teleport/workflows/Tfsec/badge.svg)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/xxxxx/badge)](https://www.bestpractices.dev/en/projects/xxxxx)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/nlamirault/terraform-aws-ack/badge)](https://securityscorecards.dev/viewer/?uri=github.com/nlamirault/terraform-aws-ac)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev)
+
+## SLSA
+
+All _artifacts_ provided by this repository meet [SLSA L3](https://slsa.dev/spec/v1.0/levels#build-l3)
+
+### Verify SLSA provenance using the Github CLI
+
+```shell
+$ gh attestation verify oci://ghcr.io/nlamirault/modules/terraform-aws-ack:v2.0.0 --repo nlamirault/terraform-aws-ack
+
+```
+
+### Verify SLSA provenance using Cosign
+
+```shell
+$ cosign verify-attestation \
+  --type slsaprovenance \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' \
+  ghcr.io/nlamirault/modules/terraform-aws-ack:v2.0.0@sha256:
+
+
+...
+```
+
+## OCI
+
+You could discover all the referrers of manifest with annotations, displayed in a tree view:
+
+```shell
+$ oras discover --format tree ghcr.io/nlamirault/modules/terraform-aws-ack:v2.0.0
+
+```
+
+
 
 ## Documentation
 
@@ -46,3 +84,11 @@
 
 No outputs.
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## License
+
+[Apache 2.0 License](./LICENSE)
