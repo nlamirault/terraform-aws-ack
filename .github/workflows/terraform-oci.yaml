@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: Copyright (C) Nicolas Lamirault <nicolas.lamirault@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Terraform / OCI
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish-oci:
+    permissions:
+      attestations: write # need for Artifact Attestations
+      contents: write     # to push chart release and create a release (helm/chart-releaser-action)
+      id-token: write     # needed for keyless signing
+      packages: write     # needed for ghcr access
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.get-digest.outputs.digest }}
+      image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Extract repository name
+        run: |
+          REPO_NAME=$(basename "${GITHUB_REPOSITORY}")
+          echo "Repository name: $REPO_NAME"
+          echo "REPO_NAME=$REPO_NAME" >> "$GITHUB_ENV"
+
+      - name: Extract Terraform module name and version
+        id: release-details
+        env:
+          MODULE_NAME: ${{ env.REPO_NAME }}
+          MODULE_VERSION: ${{ github.ref_name }}
+        run: |
+          echo release_name=$MODULE_NAME >> "$GITHUB_OUTPUT"
+          echo release_version=$MODULE_VERSION >> "$GITHUB_OUTPUT"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Oras
+        uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e2d # v1.2.2
+
+      - name: Push Terraform module to GHCR
+        env:
+          MODULE_IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+          MODULE_VERSION: ${{ steps.release-details.outputs.release_version }}
+          MODULE_NAME: ${{ steps.release-details.outputs.release_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          oras version
+          oras push "${MODULE_IMAGE}:${MODULE_VERSION}" \
+            --artifact-type application/vnd.terraform.module \
+            --annotation "org.opencontainers.image.title=Terraform ACK Module" \
+            --annotation "org.opencontainers.image.description=Provision AWS IAM resources for ACK with Terraform" \
+            --annotation "org.opencontainers.image.authors=Nicolas Lamirault <nicolas.lamirault@gmail.com>" \
+            --annotation "org.opencontainers.image.version=${MODULE_VERSION}" \
+            --annotation "org.opencontainers.image.ref.name=${MODULE_NAME}" \
+            --annotation "org.opencontainers.image.source=https://github.com/${REPO}" \
+            --annotation "org.opencontainers.image.documentation=https://github.com/${REPO}" \
+            --annotation "org.opencontainers.image.issue-tracker=https://github.com/${REPO}/issues" \
+            --annotation "org.opencontainers.image.licenses=Apache-2.0" \
+            modules/
+
+      - name: Setup Crane
+        uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
+
+      - name: Get pushed module digest
+        id: get-digest
+        env:
+          MODULE_IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+          MODULE_VERSION: ${{ steps.release-details.outputs.release_version }}
+        run: |
+          digest=$(crane digest "${MODULE_IMAGE}:${MODULE_VERSION}")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$digest"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Sign with Cosign
+        env:
+          MODULE_IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+          DIGEST: ${{ steps.get-digest.outputs.digest }}
+          REPO: ${{ github.repository }}
+        run: |
+          artifact_digest_uri="${MODULE_IMAGE}@${DIGEST}"
+          cosign sign --yes "${artifact_digest_uri}"
+          cosign verify "${artifact_digest_uri}" \
+              --certificate-identity-regexp "https://github.com/${REPO}/*" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@a930d0ac434e3182448fe678398ba5713717112a # v0.21.0
+        with:
+          path: ./modules/
+          artifact-name: sbom-${{ steps.release-details.outputs.release_name }}
+          output-file: ./sbom-${{ steps.release-details.outputs.release_name }}.spdx.json
+
+      - name: Attest
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+          subject-digest: ${{ steps.get-digest.outputs.digest }}
+          push-to-registry: true
+
+  terraform-provenance:
+    needs:
+      - publish-oci
+    permissions:
+      actions: read     # To read the workflow path.
+      id-token: write   # To sign the provenance.
+      packages: write   # To upload assets to release.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      digest: "${{ needs.publish-oci.outputs.digest }}"
+      image: "${{ needs.publish-oci.outputs.image }}"
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  verification-with-cosign:
+    needs:
+      - publish-oci
+      - terraform-provenance
+    runs-on: ubuntu-latest
+    permissions: read-all
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Verify image
+        env:
+          IMAGE: "${{ needs.publish-oci.outputs.image }}"
+          DIGEST: ${{ needs.publish-oci.outputs.digest }}
+        run: |
+          cosign verify-attestation \
+              --type slsaprovenance \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' \
+              "$IMAGE@$DIGEST"
