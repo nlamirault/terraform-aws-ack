@@ -46,43 +46,27 @@ module "ack_irsa_role" {
 ##############################################################################
 # Pod Identity
 
-data "aws_iam_policy_document" "pod_identity_trust" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole", "sts:TagSession"]
+#tfsec:ignore:aws-iam-no-policy-wildcards
+module "ack_eks_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "2.8.0"
 
-    principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
+  for_each = var.enable_pod_identity ? local.ack_services_map : {}
+
+  name        = "ack-${each.value.name}-controller"
+  description = "ACK ${upper(each.value.name)} controller Pod Identity role"
+
+  additional_policy_arns = {
+    (each.value.name) = each.value.policy_arn
+  }
+
+  associations = {
+    main = {
+      cluster_name    = var.cluster_name
+      namespace       = var.ack_controller_namespace
+      service_account = "ack-${each.value.name}-controller"
     }
   }
-}
-
-#tfsec:ignore:aws-iam-no-policy-wildcards
-resource "aws_iam_role" "ack_pod_identity" {
-  for_each = var.enable_pod_identity ? local.ack_services_map : {}
-
-  name               = "ack-${each.value.name}-controller"
-  description        = "ACK ${upper(each.value.name)} controller Pod Identity role"
-  assume_role_policy = data.aws_iam_policy_document.pod_identity_trust.json
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy_attachment" "ack_pod_identity" {
-  for_each = var.enable_pod_identity ? local.ack_services_map : {}
-
-  role       = aws_iam_role.ack_pod_identity[each.key].name
-  policy_arn = each.value.policy_arn
-}
-
-resource "aws_eks_pod_identity_association" "ack" {
-  for_each = var.enable_pod_identity ? local.ack_services_map : {}
-
-  cluster_name    = var.cluster_name
-  namespace       = var.ack_controller_namespace
-  service_account = "ack-${each.value.name}-controller"
-  role_arn        = aws_iam_role.ack_pod_identity[each.key].arn
 
   tags = var.tags
 }

@@ -25,5 +25,5 @@ output "ack_irsa_role_arns" {
 
 output "ack_pod_identity_role_arns" {
   description = "Map of ACK service name to Pod Identity role ARN"
-  value       = { for k, v in aws_iam_role.ack_pod_identity : k => v.arn }
+  value       = { for k, v in module.ack_eks_pod_identity : k => v.iam_role_arn }
 }
