@@ -12,40 +12,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#tfsec:ignore:aws-iam-no-policy-wildcards
-module "ack_controller_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "6.6.0"
-
-  for_each = var.ack_services
-
-  create_role                   = true
-  role_description              = format("ACK %s controller role", upper(each.value.name))
-  role_name                     = format("ack-%s-controller", each.value.name)
-  provider_url                  = data.aws_eks_cluster.this.cluster_oidc_issuer_url
-  role_policy_arns              = [each.value.policy_arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:%s:ack-%s-controller", var.ack_controller_namespace, each_value.name]
-  tags                          = var.tags
+locals {
+  ack_services_map = { for svc in var.ack_services : svc.name => svc }
 }
 
-resource "aws_iam_policy" "ack_eks" {
-  name        = format("ack-%s-controller", var.ack_controller_role_name)
-  description = format("Allow ACK controller to manage %s resources", upper(var.ack_controller_role_name))
-  path        = "/"
-  policy      = file("${path.module}/eks_policy.json")
-  tags        = var.tags
+##############################################################################
+# IRSA
+
+#tfsec:ignore:aws-iam-no-policy-wildcards
+module "ack_irsa_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "6.6.0"
+
+  for_each = var.enable_irsa ? local.ack_services_map : {}
+
+  name        = "ack-${each.value.name}-controller-irsa"
+  description = "ACK ${upper(each.value.name)} controller IRSA role"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = data.aws_iam_openid_connect_provider.eks[0].arn
+      namespace_service_accounts = ["${var.ack_controller_namespace}:ack-${each.value.name}-controller"]
+    }
+  }
+
+  policies = {
+    (each.value.name) = each.value.policy_arn
+  }
+
+  tags = var.tags
+}
+
+##############################################################################
+# Pod Identity
+
+data "aws_iam_policy_document" "pod_identity_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
 }
 
 #tfsec:ignore:aws-iam-no-policy-wildcards
-module "alb_controller_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "6.6.0"
+resource "aws_iam_role" "ack_pod_identity" {
+  for_each = var.enable_pod_identity ? local.ack_services_map : {}
 
-  create_role                   = true
-  role_description              = format("ACK %s controller role", upper(var.ack_controller_role_name))
-  role_name                     = format("ack-%s-controller", var.ack_controller_role_name)
-  provider_url                  = data.aws_eks_cluster.this.cluster_oidc_issuer_url
-  role_policy_arns              = [aws_iam_policy.ack_eks.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:%s:ack-%s-controller", var.ack_controller_namespace, var.ack_controller_role_name]
-  tags                          = var.tags
+  name               = "ack-${each.value.name}-controller"
+  description        = "ACK ${upper(each.value.name)} controller Pod Identity role"
+  assume_role_policy = data.aws_iam_policy_document.pod_identity_trust.json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ack_pod_identity" {
+  for_each = var.enable_pod_identity ? local.ack_services_map : {}
+
+  role       = aws_iam_role.ack_pod_identity[each.key].name
+  policy_arn = each.value.policy_arn
+}
+
+resource "aws_eks_pod_identity_association" "ack" {
+  for_each = var.enable_pod_identity ? local.ack_services_map : {}
+
+  cluster_name    = var.cluster_name
+  namespace       = var.ack_controller_namespace
+  service_account = "ack-${each.value.name}-controller"
+  role_arn        = aws_iam_role.ack_pod_identity[each.key].arn
+
+  tags = var.tags
 }

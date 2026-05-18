@@ -11,3 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#############################################################################
+# IRSA
+
+output "ack_irsa_role_arns" {
+  description = "Map of ACK service name to IRSA role ARN"
+  value       = { for k, v in module.ack_irsa_role : k => v.arn }
+}
+
+#############################################################################
+# Pod Identity
+
+output "ack_pod_identity_role_arns" {
+  description = "Map of ACK service name to Pod Identity role ARN"
+  value       = { for k, v in aws_iam_role.ack_pod_identity : k => v.arn }
+}
