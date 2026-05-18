@@ -19,6 +19,7 @@ env:
 jobs:
   publish-oci:
     permissions:
+      artifact-metadata: write # needed for attest storage records
       attestations: write # need for Artifact Attestations
       contents: write     # to push chart release and create a release (helm/chart-releaser-action)
       id-token: write     # needed for keyless signing
@@ -115,52 +116,101 @@ jobs:
           artifact-name: sbom-${{ steps.release-details.outputs.release_name }}
           output-file: ./sbom-${{ steps.release-details.outputs.release_name }}.spdx.json
 
-      - name: Attest
-        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+      - name: Attest SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
           subject-digest: ${{ steps.get-digest.outputs.digest }}
+          sbom-path: ./sbom-${{ steps.release-details.outputs.release_name }}.spdx.json
           push-to-registry: true
 
-  terraform-provenance:
+      # - name: Attest (legacy actions/attest-build-provenance)
+      #   uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+      #   with:
+      #     subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/modules/${{ steps.release-details.outputs.release_name }}
+      #     subject-digest: ${{ steps.get-digest.outputs.digest }}
+      #     push-to-registry: true
+
+  attest-provenance-github:
     needs:
       - publish-oci
     permissions:
-      actions: read     # To read the workflow path.
-      id-token: write   # To sign the provenance.
-      packages: write   # To upload assets to release.
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+      packages: write # to pass registry-password
+    # Reusable workflow signs with its own OIDC identity (SLSA Build L3).
+    uses: nlamirault/terraform-workflows/.github/workflows/attest-oci.yml@26019e245980820d50f0adcaa0034133e7e6efcb # v0.1.1
     with:
-      digest: "${{ needs.publish-oci.outputs.digest }}"
-      image: "${{ needs.publish-oci.outputs.image }}"
-      registry-username: ${{ github.actor }}
+      subject-name: ${{ needs.publish-oci.outputs.image }}
+      subject-digest: ${{ needs.publish-oci.outputs.digest }}
     secrets:
+      registry-username: ${{ github.actor }}
       registry-password: ${{ secrets.GITHUB_TOKEN }}
 
-  verification-with-cosign:
+  verification-github:
     needs:
       - publish-oci
-      - terraform-provenance
+      - attest-provenance-github
     runs-on: ubuntu-latest
     permissions: read-all
     steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Verify image
+      - name: Verify L3 provenance attestation
         env:
           IMAGE: "${{ needs.publish-oci.outputs.image }}"
           DIGEST: ${{ needs.publish-oci.outputs.digest }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cosign verify-attestation \
-              --type slsaprovenance \
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-              --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' \
-              "$IMAGE@$DIGEST"
+          gh attestation verify oci://$IMAGE@$DIGEST \
+            --signer-workflow nlamirault/terraform-workflows/.github/workflows/attest-oci.yml
+
+      - name: Verify SBOM attestation
+        env:
+          IMAGE: "${{ needs.publish-oci.outputs.image }}"
+          DIGEST: ${{ needs.publish-oci.outputs.digest }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh attestation verify oci://$IMAGE@$DIGEST \
+            --repo $REPO \
+            --predicate-type https://spdx.dev/Document
+
+  # attest-provenance-slsa-framework:
+  #   needs:
+  #     - publish-oci
+  #   permissions:
+  #     actions: read     # To read the workflow path.
+  #     id-token: write   # To sign the provenance.
+  #     packages: write   # To upload assets to release.
+  #   uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+  #   with:
+  #     digest: "${{ needs.publish-oci.outputs.digest }}"
+  #     image: "${{ needs.publish-oci.outputs.image }}"
+  #     registry-username: ${{ github.actor }}
+  #   secrets:
+  #     registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # verification-cosign:
+  #   needs:
+  #     - publish-oci
+  #     - attest-provenance-slsa-framework
+  #   runs-on: ubuntu-latest
+  #   permissions: read-all
+  #   steps:
+  #     - name: Login to GitHub Container Registry
+  #       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+  #       with:
+  #         registry: ${{ env.REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #
+  #     - name: Install Cosign
+  #       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+  #
+  #     - name: Verify image
+  #       env:
+  #         IMAGE: "${{ needs.publish-oci.outputs.image }}"
+  #         DIGEST: ${{ needs.publish-oci.outputs.digest }}
+  #       run: |
+  #         cosign verify-attestation \
+  #             --type slsaprovenance \
+  #             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  #             --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' \
+  #             "$IMAGE@$DIGEST"
