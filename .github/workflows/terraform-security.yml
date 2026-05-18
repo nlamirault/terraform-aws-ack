@@ -1,0 +1,86 @@
+# SPDX-FileCopyrightText: Copyright (C) Nicolas Lamirault <nicolas.lamirault@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Terraform / Security
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.tf'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.tf'
+  schedule:
+    # Weekly on Mondays at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  trivy:
+    name: Trivy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Trivy (misconfigs)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy.sarif
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@bc0b696b4103f5fe60f15749af68a046868d511a # codeql-bundle-v2.25.4
+        if: always()
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
+        with:
+          directory: .
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          soft_fail: true
+
+      - name: Upload Checkov SARIF
+        uses: github/codeql-action/upload-sarif@bc0b696b4103f5fe60f15749af68a046868d511a # codeql-bundle-v2.25.4
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
