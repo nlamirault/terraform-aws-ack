@@ -20,12 +20,6 @@ variable "cluster_name" {
   description = "Name of the EKS cluster"
 }
 
-variable "ack_controller_role_name" {
-  description = "The name of the ACK Controller IAM role"
-  type        = string
-  default     = "ack-controller"
-}
-
 variable "tags" {
   description = "A map of tags to add to all resources"
   type        = map(string)
@@ -35,6 +29,18 @@ variable "ack_controller_namespace" {
   description = "The K8s namespace for ACK Controller resources"
   type        = string
   default     = "ack-system"
+}
+
+variable "enable_irsa" {
+  description = "Enable IRSA authentication for ACK controllers"
+  type        = bool
+  default     = false
+}
+
+variable "enable_pod_identity" {
+  description = "Enable EKS Pod Identity authentication for ACK controllers (requires EKS 1.24+ with Pod Identity Agent DaemonSet)"
+  type        = bool
+  default     = true
 }
 
 variable "ack_services" {
@@ -63,14 +69,6 @@ variable "ack_services" {
     {
       name       = "ecr"
       policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
-    },
-    # {
-    #   name       = "eks"
-    #   policy_arn = "arn:aws:iam::aws:policy/" # TODO:
-    # },
-    {
-      name       = "apigatewayv2"
-      policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
     },
     {
       name       = "elasticache"
