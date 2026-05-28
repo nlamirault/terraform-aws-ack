@@ -22,7 +22,7 @@ locals {
 #tfsec:ignore:aws-iam-no-policy-wildcards
 module "ack_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "6.6.0"
+  version = "6.6.1"
 
   for_each = var.enable_irsa ? local.ack_services_map : {}
 
