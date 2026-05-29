@@ -49,7 +49,7 @@ module "ack_irsa_role" {
 #tfsec:ignore:aws-iam-no-policy-wildcards
 module "ack_eks_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.8.0"
+  version = "2.8.1"
 
   for_each = var.enable_pod_identity ? local.ack_services_map : {}
 
